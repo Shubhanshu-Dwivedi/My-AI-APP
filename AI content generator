@@ -17,128 +17,133 @@
 </head>
 <body class="min-h-screen pb-12">
 
-<div class="max-w-6xl mx-auto px-4 pt-12">
-    <div class="text-center mb-12">
-        <h1 class="text-5xl font-extrabold mb-4 gradient-text">Content Idea Engine</h1>
-        <p class="text-slate-400 text-lg">Generate 20 viral ideas with thumbnails and SEO strategy.</p>
-    </div>
+    <div class="max-w-6xl mx-auto px-4 pt-12">
+        <div class="text-center mb-12">
+            <h1 class="text-5xl font-extrabold mb-4 gradient-text">Content Idea Engine</h1>
+            <p class="text-slate-400 text-lg">Generate 20 viral ideas with thumbnails and SEO strategy.</p>
+        </div>
 
-    <div class="glass p-8 rounded-3xl shadow-2xl mb-12">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <label class="block text-sm font-semibold text-slate-300 mb-2">Gemini API Key</label>
-                <input type="password" id="apiKey" placeholder="Enter your API key..."
-                       class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-            </div>
-            <div>
-                <label class="block text-sm font-semibold text-slate-300 mb-2">Niche or Topic</label>
-                <div class="flex gap-3">
-                    <input type="text" id="topic" placeholder="e.g. Minimalist Productivity"
-                           class="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-                    <button onclick="generateIdeas()" id="genBtn"
+        <div class="glass p-8 rounded-3xl shadow-2xl mb-12">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-300 mb-2">Gemini API Key</label>
+                    <input type="password" id="apiKey" value="AIzaSyB7NEF9jVPNsrVvjXco6oa8k8iIHV8unQQ" placeholder="Enter your API key..." 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-300 mb-2">Niche or Topic</label>
+                    <div class="flex gap-3">
+                        <input type="text" id="topic" placeholder="e.g. Minimalist Productivity" 
+                            class="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                        <button onclick="generateIdeas()" id="genBtn" 
                             class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 rounded-xl transition-all transform active:scale-95 disabled:opacity-50">
-                        Generate
-                    </button>
+                            Generate
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <div id="loader" class="hidden text-center py-20">
+            <div class="animate-spin inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+            <p class="text-xl text-slate-400">Analyzing trends and crafting ideas...</p>
+        </div>
+
+        <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+        <div class="mt-20">
+            <h2 class="text-2xl font-bold mb-6 text-slate-200 flex items-center gap-2">
+                <span>Recent History</span>
+                <button onclick="clearHistory()" class="text-xs font-normal text-red-400 hover:underline">Clear</button>
+            </h2>
+            <div id="historyList" class="flex flex-wrap gap-3"></div>
+        </div>
     </div>
 
-    <div id="loader" class="hidden text-center py-20">
-        <div class="animate-spin inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
-        <p class="text-xl text-slate-400">Analyzing trends and crafting ideas...</p>
-    </div>
+    <script>
+        const resultsGrid = document.getElementById('resultsGrid');
+        const loader = document.getElementById('loader');
+        const historyList = document.getElementById('historyList');
 
-    <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        window.onload = loadHistory;
 
-    <div class="mt-20">
-        <h2 class="text-2xl font-bold mb-6 text-slate-200 flex items-center gap-2">
-            <span>Recent History</span>
-            <button onclick="clearHistory()" class="text-xs font-normal text-red-400 hover:underline">Clear</button>
-        </h2>
-        <div id="historyList" class="flex flex-wrap gap-3"></div>
-    </div>
-</div>
+        async function generateIdeas() {
+            const key = document.getElementById('apiKey').value;
+            const topic = document.getElementById('topic').value;
 
-<script>
-    const resultsGrid = document.getElementById('resultsGrid');
-    const loader = document.getElementById('loader');
-    const historyList = document.getElementById('historyList');
+            if (!key || !topic) return alert("Please fill in both fields!");
 
-    window.onload = loadHistory;
+            loader.classList.remove('hidden');
+            resultsGrid.innerHTML = '';
+            
+            const prompt = `Generate 20 creative content ideas for the niche: "${topic}". 
+            Format the response as a JSON array of objects. 
+            Each object must have: "title", "thumbnailDescription", "seoKeywords" (array). 
+            Return ONLY the raw JSON array.`;
 
-    async function generateIdeas() {
-        const key = document.getElementById('apiKey').value;
-        const topic = document.getElementById('topic').value;
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
 
-        if (!key || !topic) return alert("Please fill in both fields!");
+                const data = await response.json();
+                
+                // Extract and clean JSON from the response
+                let rawText = data.candidates[0].content.parts[0].text;
+                const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+                if (!jsonMatch) throw new Error("Invalid JSON returned");
+                
+                const ideas = JSON.parse(jsonMatch[0]);
 
-        loader.classList.remove('hidden');
-        resultsGrid.innerHTML = '';
-
-        const prompt = `Generate 20 creative content ideas for the niche: "${topic}".
-        Format the response as a JSON array of objects.
-        Each object must have: "title", "thumbnailDescription", "seoKeywords" (array).
-        Return ONLY the raw JSON array.`;
-
-        try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-            });
-
-            const data = await response.json();
-            const text = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '');
-            const ideas = JSON.parse(text);
-
-            displayResults(ideas);
-            saveToHistory(topic);
-        } catch (error) {
-            console.error(error);
-            alert("Error generating ideas. Check your API key.");
-        } finally {
-            loader.classList.add('hidden');
+                displayResults(ideas);
+                saveToHistory(topic);
+            } catch (error) {
+                console.error(error);
+                alert("Error generating ideas. Check your API key or internet connection.");
+            } finally {
+                loader.classList.add('hidden');
+            }
         }
-    }
 
-    function displayResults(ideas) {
-        resultsGrid.innerHTML = ideas.map((item, index) => `
-            <div class="glass p-6 rounded-2xl shadow-lg hover:border-blue-500/50 transition-all group">
-                <div class="h-40 bg-slate-800 rounded-xl mb-4 flex items-center justify-center p-4 text-center text-sm text-slate-400 italic">
-                    "${item.thumbnailDescription}"
+        function displayResults(ideas) {
+            resultsGrid.innerHTML = ideas.map((item, index) => `
+                <div class="glass p-6 rounded-2xl shadow-lg hover:border-blue-500/50 transition-all group">
+                    <div class="h-40 bg-slate-800 rounded-xl mb-4 flex items-center justify-center p-4 text-center text-sm text-slate-400 italic">
+                        "${item.thumbnailDescription}"
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 leading-tight group-hover:text-blue-400">${item.title}</h3>
+                    <div class="flex flex-wrap gap-2">
+                        ${item.seoKeywords.slice(0, 3).map(k => `<span class="text-[10px] bg-slate-800 px-2 py-1 rounded-md text-slate-300">#${k}</span>`).join('')}
+                    </div>
                 </div>
-                <h3 class="text-xl font-bold mb-3 leading-tight group-hover:text-blue-400">${item.title}</h3>
-                <div class="flex flex-wrap gap-2">
-                    ${item.seoKeywords.slice(0, 3).map(k => `<span class="text-[10px] bg-slate-800 px-2 py-1 rounded-md text-slate-300">#${k}</span>`).join('')}
-                </div>
-            </div>
-        `).join('');
-    }
+            `).join('');
+        }
 
-    function saveToHistory(topic) {
-        let history = JSON.parse(localStorage.getItem('contentHistory') || '[]');
-        if (!history.includes(topic)) {
-            history.unshift(topic);
-            localStorage.setItem('contentHistory', JSON.stringify(history.slice(0, 10)));
+        function saveToHistory(topic) {
+            let history = JSON.parse(localStorage.getItem('contentHistory') || '[]');
+            if (!history.includes(topic)) {
+                history.unshift(topic);
+                localStorage.setItem('contentHistory', JSON.stringify(history.slice(0, 10)));
+                loadHistory();
+            }
+        }
+
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('contentHistory') || '[]');
+            historyList.innerHTML = history.map(item => `
+                <button onclick="document.getElementById('topic').value='${item}'; generateIdeas();" 
+                    class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-full text-sm transition-all border border-slate-700">
+                    ${item}
+                </button>
+            `).join('');
+        }
+
+        function clearHistory() {
+            localStorage.removeItem('contentHistory');
             loadHistory();
         }
-    }
-
-    function loadHistory() {
-        const history = JSON.parse(localStorage.getItem('contentHistory') || '[]');
-        historyList.innerHTML = history.map(item => `
-            <button onclick="document.getElementById('topic').value='${item}'; generateIdeas();"
-                class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-full text-sm transition-all border border-slate-700">
-                ${item}
-            </button>
-        `).join('');
-    }
-
-    function clearHistory() {
-        localStorage.removeItem('contentHistory');
-        loadHistory();
-    }
-</script>
+    </script>
 </body>
 </html>
